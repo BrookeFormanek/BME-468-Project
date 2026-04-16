@@ -100,7 +100,7 @@ xlim([0 50]);
 xlabel('Frequency (Hz)', 'FontSize', 10);
 ylabel('PSD (\muV^2/Hz)', 'FontSize', 10);
 title('PSD — Before Filter', 'FontSize', 11, 'FontWeight', 'bold');
-legend('FontSize', 5, 'Location', 'northeast');
+legend(channelLabels, 'FontSize', 5, 'Location', 'northeast');
 grid on;
 set(gca, 'FontSize', 10);
 
@@ -446,4 +446,134 @@ for r = 1:size(allRegions,1)
     sgtitle(sprintf('FFT Power (%s) — %d–%d s', ...
         regionLabels{r}, tStart, tEnd), ...
         'FontSize', 14, 'FontWeight', 'bold');
+end
+
+%% Part 3f: PSD Before vs After Filtering
+
+figure('Name','PSD Before vs After',...
+       'Units','normalized','OuterPosition',[0 0 1 1]);
+
+tiledlayout(4,2,'TileSpacing','compact','Padding','compact');
+
+nfft = 2048;
+
+for ch = 1:7
+    
+    % ---- Demean ----
+    raw  = data(:, ch) - mean(data(:, ch));
+    filt = filtered(:, ch) - mean(filtered(:, ch));
+    
+    % ---- PSD ----
+    [pxx_raw, f]  = pwelch(raw,  hann(nfft), nfft/2, nfft, fs);
+    [pxx_filt, ~] = pwelch(filt, hann(nfft), nfft/2, nfft, fs);
+    
+    % Frequency range
+    mask = (f >= 1 & f <= 100);
+    
+    nexttile;
+    
+    plot(f(mask), pxx_raw(mask), '--', 'LineWidth', 1.2);
+    hold on;
+    plot(f(mask), pxx_filt(mask), 'b', 'LineWidth', 1.5);
+    
+    set(gca,'YScale','log');
+    xlim([1 100]);
+    
+    title(channelLabels{ch});
+    xlabel('Frequency (Hz)');
+    ylabel('PSD (\muV^2/Hz)');
+    grid on;
+end
+
+% 8th panel
+nexttile;
+hold on;
+for ch = 1:7
+    raw  = data(:, ch) - mean(data(:, ch));
+    filt = filtered(:, ch) - mean(filtered(:, ch));
+    
+    [pxx_raw, f]  = pwelch(raw,  hann(nfft), nfft/2, nfft, fs);
+    [pxx_filt, ~] = pwelch(filt, hann(nfft), nfft/2, nfft, fs);
+    
+    mask = (f >= 1 & f <= 100);
+    
+    plot(f(mask), pxx_raw(mask), '--', 'Color',[0.7 0.7 0.7]);
+    plot(f(mask), pxx_filt(mask), 'b');
+end
+
+set(gca,'YScale','log');
+xlim([1 100]);
+title('All Channels');
+xlabel('Frequency (Hz)');
+ylabel('PSD');
+grid on;
+
+sgtitle('PSD Before vs After 1–30 Hz Filtering','FontSize',14,'FontWeight','bold');
+
+%% Part 3g: PSD of Selected Segments (1–30 Hz)
+
+allRegions = [highRegions; lowRegions];
+regionLabels = {'High 1','High 2','High 3','Low 1','Low 2','Low 3'};
+
+nfft = 1024;
+
+% ---- Find global max for consistent scaling ----
+maxPSD = 0;
+
+for r = 1:size(allRegions,1)
+    mask = (t >= allRegions(r,1) & t <= allRegions(r,2));
+    
+    for ch = 1:7
+        sig = filtered(mask,ch) - mean(filtered(mask,ch));
+        [pxx,f] = pwelch(sig,hann(nfft),nfft/2,nfft,fs);
+        
+        band = (f >= 1 & f <= 30);
+        maxPSD = max(maxPSD, max(pxx(band)));
+    end
+end
+
+% ---- Plot ----
+for r = 1:size(allRegions,1)
+    
+    mask = (t >= allRegions(r,1) & t <= allRegions(r,2));
+    
+    figure('Name',regionLabels{r},...
+           'Units','normalized','OuterPosition',[0 0 1 1]);
+    
+    tiledlayout(4,2,'TileSpacing','compact','Padding','compact');
+    
+    for ch = 1:7
+        
+        sig = filtered(mask,ch) - mean(filtered(mask,ch));
+        [pxx,f] = pwelch(sig,hann(nfft),nfft/2,nfft,fs);
+        
+        band = (f >= 1 & f <= 30);
+        
+        nexttile;
+        plot(f(band), pxx(band), 'LineWidth',1.5);
+        
+        xlim([1 30]);
+        ylim([0 maxPSD]);
+        
+        title(channelLabels{ch});
+        xlabel('Hz'); ylabel('PSD');
+        grid on;
+    end
+    
+    % 8th panel
+    nexttile;
+    hold on;
+    for ch = 1:7
+        sig = filtered(mask,ch) - mean(filtered(mask,ch));
+        [pxx,f] = pwelch(sig,hann(nfft),nfft/2,nfft,fs);
+        band = (f >= 1 & f <= 30);
+        plot(f(band), pxx(band));
+    end
+    
+    xlim([1 30]);
+    ylim([0 maxPSD]);
+    title('All Channels');
+    grid on;
+    
+    sgtitle(regionLabels{r});
 end
