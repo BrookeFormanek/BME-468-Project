@@ -5,7 +5,7 @@
 
 clear; clc; close all;
 
-%% Load Data
+% Load Data
 matData = load('BME468_Project.mat');
 data = double(matData.dataMatrix); % [samples x 7], units: µV
 
@@ -23,26 +23,26 @@ channelLabels = {
     'Ch7: EEG Pz'
 };
 
-%% Design Butterworth Bandpass Filter (1–30 Hz)
+% Design Butterworth Bandpass Filter (1–30 Hz)
 fLow  = 1;
 fHigh = 30;
 order = 4;
 
 [b, a] = butter(order, [fLow fHigh] / (fs/2), 'bandpass');
 
-%% Apply Zero-Phase Filtering
+% Apply Zero-Phase Filtering
 filtered = zeros(size(data));
 for ch = 1:nChan
     filtered(:, ch) = filtfilt(b, a, data(:, ch));
 end
 
-%% Select Shorter Display Window (5 seconds → clearer signals)
+% Select Shorter Display Window (5 seconds → clearer signals)
 tStart = 10;
-tEnd   = 15;
+tEnd   = 40;
 mask   = (t >= tStart) & (t <= tEnd);
 tSeg   = t(mask);
 
-%% Create Figure with Better Layout
+% Create Figure with Better Layout
 fig = figure('Name', 'EEG Filtering 1–30 Hz', ...
              'Units', 'normalized', ...
              'OuterPosition', [0 0 1 1]);
@@ -52,7 +52,7 @@ tiledlayout(8, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
 colorBefore = [0.6 0.6 0.6];
 colorAfter  = [0 0.45 0.74];
 
-%% Plot Each Channel
+% Plot Each Channel
 for i = 1:7
     rawSeg  = data(mask, i);
     filtSeg = filtered(mask, i);
@@ -85,7 +85,7 @@ for i = 1:7
     set(gca, 'FontSize', 10);
 end
 
-%% PSD Comparison
+% PSD Comparison
 nfft = 2048;
 
 % ---- Before PSD ----
@@ -100,6 +100,7 @@ xlim([0 50]);
 xlabel('Frequency (Hz)', 'FontSize', 10);
 ylabel('PSD (\muV^2/Hz)', 'FontSize', 10);
 title('PSD — Before Filter', 'FontSize', 11, 'FontWeight', 'bold');
+legend('FontSize', 5, 'Location', 'northeast');
 grid on;
 set(gca, 'FontSize', 10);
 
@@ -115,10 +116,11 @@ xlim([0 50]);
 xlabel('Frequency (Hz)', 'FontSize', 10);
 ylabel('PSD (\muV^2/Hz)', 'FontSize', 10);
 title('PSD — After Filter (1–30 Hz)', 'FontSize', 11, 'FontWeight', 'bold');
+legend('FontSize', 5, 'Location', 'northeast');
 grid on;
 set(gca, 'FontSize', 10);
 
-%% Title
+% Title
 sgtitle({'EEG Before vs After 1–30 Hz Bandpass Filter', ...
          sprintf('Window: %d–%d s | fs = %d Hz | 4th Order Butterworth (Zero-Phase)', ...
          tStart, tEnd, fs)}, ...
@@ -151,60 +153,125 @@ xlabel('Time (s)');
 ylabel('Amplitude (\muV)');
 grid on;
 
-highRegions = [ ...
-    180.104 217.771; % 170 - 200 seconds (175 - 185)
-    212.746 208.483; % 200 - 230 seconds (210 - 220)
-    329.373 194.171 % 315 - 345 seconds (320 - 330)
-];
+%highRegions = [ ...
+    %180.104 217.771; % 170 - 200 seconds (175 - 185)
+    %212.746 208.483; % 200 - 230 seconds (210 - 220)
+    %329.373 194.171 % 315 - 345 seconds (320 - 330)
+%];
 
-lowRegions = [ ...
-    77.048 72.0417; % 70 - 100 seconds (70 - 80)
-    231.911 70.4506; % 230 - 260 seconds (230 - 240)
-    314.722 72.6955 % 300 - 330 seconds (310 - 320)
-];
+%lowRegions = [ ...
+    %77.048 72.0417; % 70 - 100 seconds (70 - 80)
+    %231.911 70.4506; % 230 - 260 seconds (230 - 240)
+    %314.722 72.6955 % 300 - 330 seconds (310 - 320)
+%];
 
-%% Part 3c: 10 second zoomed plots
+%% Part 3c: Zoomed 10-second EEG Segments (Filtered Data)
 
-% Choose one region (example: first high activity)
-tStart = 175;
-tEnd   = 185;  % 10-second window
+% Load Data
+matData = load('BME468_Project.mat');
+data = double(matData.dataMatrix);
 
-mask = (t >= tStart) & (t <= tEnd);
-tSeg = t(mask);
+fs = 1000;
+[nSamples, nChan] = size(data);
+t = (0:nSamples-1) / fs;
 
-figure('Name', 'Zoomed EEG Segment', ...
-       'Units', 'normalized', ...
-       'OuterPosition', [0 0 1 1]);
+channelLabels = {
+    'Ch1: tEEG P1', ...
+    'Ch2: eEEG P1', ...
+    'Ch3: tEEG P2', ...
+    'Ch4: eEEG P2', ...
+    'Ch5: tEEG Oz', ...
+    'Ch6: eEEG Oz', ...
+    'Ch7: EEG Pz'
+};
 
-tiledlayout(4,2,'TileSpacing','compact','Padding','compact');
+% Bandpass Filter (1–30 Hz)
+fLow  = 1;
+fHigh = 30;
+order = 4;
 
-for i = 1:7
-    nexttile;
-    
-    seg = filtered(mask, i);
-    
-    plot(tSeg, seg, 'LineWidth', 1.2);
-    title(channelLabels{i}, 'FontSize', 10, 'FontWeight', 'bold');
-    xlabel('Time (s)');
-    ylabel('\muV');
-    
-    % Good scaling
-    p = prctile(seg, [1 99]);
-    ylim([p(1)*1.2 p(2)*1.2]);
-    
-    grid on;
+[b, a] = butter(order, [fLow fHigh] / (fs/2), 'bandpass');
+
+filtered = zeros(size(data));
+for ch = 1:nChan
+    filtered(:, ch) = filtfilt(b, a, data(:, ch));
 end
 
-% 8th panel (optional summary)
-nexttile;
-plot(tSeg, mean(filtered(mask, :), 2), 'k', 'LineWidth', 1.5);
-title('Mean Across Channels');
-xlabel('Time (s)');
-ylabel('\muV');
-grid on;
+% Define Regions (from Part 3b)
 
-sgtitle(sprintf('EEG Zoomed Segment (%d–%d s)', tStart, tEnd), ...
-        'FontSize', 14, 'FontWeight', 'bold');
+% ---- High activity regions ----
+highRegions = [
+    175 185;
+    210 220;
+    310 320
+];
+
+% ---- Low activity regions ----
+lowRegions = [
+    70 80;
+    230 240;
+    265 275
+];
+
+% Function to Plot a Region
+function plot_region(t, filtered, region, channelLabels, labelText)
+
+    tStart = region(1);
+    tEnd   = region(2);
+    
+    mask = (t >= tStart) & (t <= tEnd);
+    tSeg = t(mask);
+    
+    figure('Name', [labelText ' EEG Segment'], ...
+           'Units', 'normalized', ...
+           'OuterPosition', [0 0 1 1]);
+
+    tiledlayout(4,2,'TileSpacing','compact','Padding','compact');
+
+    % Plot each channel
+    for i = 1:7
+        nexttile;
+        
+        seg = filtered(mask, i);
+        
+        plot(tSeg, seg, 'LineWidth', 1.2);
+        title(channelLabels{i}, 'FontSize', 10, 'FontWeight', 'bold');
+        xlabel('Time (s)');
+        ylabel('\muV');
+        
+        % Consistent scaling improves comparison
+        p = prctile(seg, [1 99]);
+        ylim([p(1)*1.2 p(2)*1.2]);
+        
+        grid on;
+    end
+
+    % 8th panel: mean across channels
+    nexttile;
+    meanSig = mean(filtered(mask, :), 2);
+    plot(tSeg, meanSig, 'k', 'LineWidth', 1.5);
+    title('Mean Across Channels', 'FontSize', 10, 'FontWeight', 'bold');
+    xlabel('Time (s)');
+    ylabel('\muV');
+    grid on;
+
+    sgtitle(sprintf('%s Activity (%d–%d s)', labelText, tStart, tEnd), ...
+            'FontSize', 14, 'FontWeight', 'bold');
+end
+
+% Generate Figures
+
+% ---- High Activity ----
+for i = 1:size(highRegions,1)
+    plot_region(t, filtered, highRegions(i,:), channelLabels, ...
+        sprintf('High Activity Region %d', i));
+end
+
+% ---- Low Activity ----
+for i = 1:size(lowRegions,1)
+    plot_region(t, filtered, lowRegions(i,:), channelLabels, ...
+        sprintf('Low Activity Region %d', i));
+end
 
 %% Part 3d: FFT Before and After Filtering
 
@@ -278,3 +345,105 @@ grid on;
 sgtitle({'FFT Power Spectrum Before vs After 1–30 Hz Filter', ...
          'Signals Centered at Zero | 1–100 Hz Range'}, ...
          'FontSize', 14, 'FontWeight', 'bold');
+
+%% Part 3e: FFT of Selected EEG Segments (1–30 Hz)
+
+% ---- High activity regions ----
+highRegions = [
+    175 185;
+    210 220;
+    310 320
+];
+
+% ---- Low activity regions ----
+lowRegions = [
+    70 80;
+    230 240;
+    265 275
+];
+
+allRegions = [highRegions; lowRegions];
+regionLabels = {
+    'High 1','High 2','High 3', ...
+    'Low 1','Low 2','Low 3'
+};
+
+% -------- First Pass: Find GLOBAL Y-LIMIT --------
+maxPower = 0;
+
+for r = 1:size(allRegions,1)
+    
+    tStart = allRegions(r,1);
+    tEnd   = allRegions(r,2);
+    mask = (t >= tStart) & (t <= tEnd);
+    
+    segData = filtered(mask, :);
+    N = size(segData,1);
+    f = (0:N-1)*(fs/N);
+    freqMask = (f >= 1 & f <= 30);
+    
+    for ch = 1:nChan
+        sig = segData(:, ch) - mean(segData(:, ch));
+        P = (abs(fft(sig)).^2)/N;
+        maxPower = max(maxPower, max(P(freqMask)));
+    end
+end
+
+% -------- Second Pass: Plot Each Segment --------
+
+for r = 1:size(allRegions,1)
+    
+    tStart = allRegions(r,1);
+    tEnd   = allRegions(r,2);
+    mask = (t >= tStart) & (t <= tEnd);
+    segData = filtered(mask, :);
+    
+    N = size(segData,1);
+    f = (0:N-1)*(fs/N);
+    freqMask = (f >= 1 & f <= 30);
+
+    figure('Name', regionLabels{r}, ...
+           'Units', 'normalized', ...
+           'OuterPosition', [0 0 1 1]);
+
+    tiledlayout(4,2,'TileSpacing','compact','Padding','compact');
+
+    for ch = 1:nChan
+        
+        sig = segData(:, ch) - mean(segData(:, ch));
+        P = (abs(fft(sig)).^2)/N;
+        
+        nexttile;
+        plot(f(freqMask), P(freqMask), 'LineWidth', 1.5);
+        
+        title(channelLabels{ch}, 'FontSize', 10, 'FontWeight', 'bold');
+        xlabel('Frequency (Hz)');
+        ylabel('Power (\muV^2)');
+        
+        xlim([1 30]);
+        ylim([0 maxPower]);
+        
+        grid on;
+    end
+
+    % 8th panel: mean power across channels
+    nexttile;
+    hold on;
+    
+    for ch = 1:nChan
+        sig = segData(:, ch) - mean(segData(:, ch));
+        P = (abs(fft(sig)).^2)/N;
+        plot(f(freqMask), P(freqMask));
+    end
+    
+    title('All Channels Overlay');
+    xlabel('Frequency (Hz)');
+    ylabel('Power (\muV^2)');
+    xlim([1 30]);
+    ylim([0 maxPower]);
+    grid on;
+
+    sgtitle(sprintf('FFT Power (%s) — %d–%d s', ...
+        regionLabels{r}, tStart, tEnd), ...
+        'FontSize', 14, 'FontWeight', 'bold');
+end
