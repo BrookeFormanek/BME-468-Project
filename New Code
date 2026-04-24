@@ -1,0 +1,207 @@
+%% BME Neural Engineering Project Spring 2026
+% Brooke Formanek and Tiffany McLoughlin
+clc; clear; close all;
+
+%% Load Data
+load('BME468_Project.mat');  
+
+EEG = data;
+fs = 1000;
+
+t = (0:length(EEG)-1)/fs;
+[numSamples, numChannels] = size(EEG);
+
+%% Bandpass Filter (1–30 Hz, zero-phase)
+[b,a] = butter(4, [1 30]/(fs/2), 'bandpass');
+
+EEG_filt = zeros(size(EEG));
+for ch = 1:numChannels
+    EEG_filt(:,ch) = filtfilt(b,a,EEG(:,ch));
+end
+
+%% -------------------- (a) RAW vs FILTERED --------------------
+figure;
+t_start = 0;
+t_end = 400;
+
+idx = (t >= t_start & t <= t_end);
+
+for ch = 1:numChannels
+    % RAW (left)
+    subplot(numChannels,2,(ch-1)*2+1)
+    plot(t, EEG(:,ch))
+    xlabel('Time (s)'), ylabel('\muV')
+    title(['Raw Ch ', num2str(ch)])
+    xlim([t_start t_end])
+
+    % FILTERED (right)
+    subplot(numChannels,2,(ch-1)*2+2)
+    plot(t, EEG_filt(:,ch))
+    xlabel('Time (s)'), ylabel('\muV')
+    title(['Filtered Ch ', num2str(ch)])
+    xlim([t_start t_end])
+end
+sgtitle('Raw vs Filtered EEG (1–30 Hz)')
+
+%% -------------------- (b) SEGMENTS (GIVEN) --------------------
+segments = [
+    185 215;
+    215 245;
+    245 275;
+    275 305;
+    305 335;
+    345 375
+];
+
+%% -------------------- (c) 10-sec ZOOMED SEGMENTS --------------------
+segments = [
+    185 215;
+    215 245;
+    245 275;
+    275 305;
+    305 335;
+    345 375
+];
+
+for r = 1:size(segments,1)
+
+    figure;
+    t_start = segments(r,1);
+    t_end   = t_start + 10;   % 10-second window
+
+    idx = (t >= t_start & t <= t_end);
+
+    for ch = 1:numChannels
+        % RAW
+        subplot(numChannels,2,(ch-1)*2+1)
+        plot(t(idx), EEG(idx,ch))
+        xlabel('Time (s)'), ylabel('\muV')
+        title(['Raw Ch ', num2str(ch)])
+
+        % FILTERED
+        subplot(numChannels,2,(ch-1)*2+2)
+        plot(t(idx), EEG_filt(idx,ch))
+        xlabel('Time (s)'), ylabel('\muV')
+        title(['Filtered Ch ', num2str(ch)])
+    end
+
+    sgtitle(['10-sec Segment starting at ', num2str(t_start), ' s'])
+end
+
+%% -------------------- (d) FFT FULL SIGNAL --------------------
+figure;
+
+for ch = 1:numChannels
+    raw = EEG(:,ch) - mean(EEG(:,ch));
+    filt = EEG_filt(:,ch) - mean(EEG_filt(:,ch));
+
+    N = length(raw);
+    f = (0:N-1)*(fs/N);
+
+    RAW_FFT = abs(fft(raw)).^2;
+    FILT_FFT = abs(fft(filt)).^2;
+
+    % RAW
+    subplot(numChannels,2,(ch-1)*2+1)
+    plot(f, RAW_FFT)
+    xlim([1 100])
+    title(['Raw FFT Ch ', num2str(ch)])
+
+    % FILTERED
+    subplot(numChannels,2,(ch-1)*2+2)
+    plot(f, FILT_FFT)
+    xlim([1 100])
+    title(['Filtered FFT Ch ', num2str(ch)])
+end
+
+sgtitle('FFT (1–100 Hz): Raw vs Filtered')
+
+%% -------------------- (e) FFT SEGMENTS --------------------
+for r = 1:size(segments,1)
+
+    figure;
+    t_start = segments(r,1);
+    t_end   = segments(r,2);
+
+    idx = (t >= t_start & t <= t_end);
+
+    for ch = 1:numChannels
+        raw = EEG(idx,ch) - mean(EEG(idx,ch));
+        filt = EEG_filt(idx,ch) - mean(EEG_filt(idx,ch));
+
+        N = length(raw);
+        f = (0:N-1)*(fs/N);
+
+        RAW_FFT = abs(fft(raw)).^2;
+        FILT_FFT = abs(fft(filt)).^2;
+
+        % RAW
+        subplot(numChannels,2,(ch-1)*2+1)
+        plot(f, RAW_FFT)
+        xlim([1 30])
+        title(['Raw Ch ', num2str(ch)])
+
+        % FILTERED
+        subplot(numChannels,2,(ch-1)*2+2)
+        plot(f, FILT_FFT)
+        xlim([1 30])
+        title(['Filtered Ch ', num2str(ch)])
+    end
+
+    sgtitle(['FFT Segment: ', num2str(t_start), '-', num2str(t_end), ' s'])
+end
+
+%% -------------------- (f) PSD FULL SIGNAL --------------------
+figure;
+
+for ch = 1:numChannels
+    raw = EEG(:,ch) - mean(EEG(:,ch));
+    filt = EEG_filt(:,ch) - mean(EEG_filt(:,ch));
+
+    % RAW
+    subplot(numChannels,2,(ch-1)*2+1)
+    pwelch(raw, [], [], [], fs)
+    xlim([1 100])
+    title(['Raw PSD Ch ', num2str(ch)])
+    ylabel('PSD (\muV^2/Hz)');
+    xlabel('Frequency (Hz)');
+
+    % FILTERED
+    subplot(numChannels,2,(ch-1)*2+2)
+    pwelch(filt, [], [], [], fs)
+    xlim([1 100])
+    title(['Filtered PSD Ch ', num2str(ch)])
+    ylabel('PSD (\muV^2/Hz)');
+    xlabel('Frequency (Hz)');
+end
+
+sgtitle('PSD (Welch): Raw vs Filtered')
+
+%% -------------------- (g) PSD SEGMENTS --------------------
+for r = 1:size(segments,1)
+
+    figure;
+    t_start = segments(r,1);
+    t_end   = segments(r,2);
+
+    idx = (t >= t_start & t <= t_end);
+
+    for ch = 1:numChannels
+        raw = EEG(idx,ch) - mean(EEG(idx,ch));
+        filt = EEG_filt(idx,ch) - mean(EEG_filt(idx,ch));
+
+        % RAW
+        subplot(numChannels,2,(ch-1)*2+1)
+        pwelch(raw, [], [], [], fs)
+        xlim([1 30])
+        title(['Raw Ch ', num2str(ch)])
+
+        % FILTERED
+        subplot(numChannels,2,(ch-1)*2+2)
+        pwelch(filt, [], [], [], fs)
+        xlim([1 30])
+        title(['Filtered Ch ', num2str(ch)])
+    end
+
+    sgtitle(['PSD Segment: ', num2str(t_start), '-', num2str(t_end), ' s'])
+end
